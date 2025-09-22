@@ -1,5 +1,10 @@
 #include <Windows.h>
 #include <cstdint>
+#include <GameInput.h>
+#include <string>
+
+#pragma comment(lib, "GameInput.lib")
+using namespace GameInput::v2;
 
 typedef int8_t int8;
 typedef int16_t int16;
@@ -51,6 +56,7 @@ static uint32 MakeRGB(uint8 r, uint8 g, uint8 b)
 
 static void Win32RenderWeirdGradient(const win32_offscreen_buffer& buffer, int xOffset, int yOffset)
 {
+
     uint8* row = (uint8*)buffer.memory;
     for (int y = 0; y < buffer.height; y++)
     {
@@ -67,7 +73,7 @@ static void Win32RenderWeirdGradient(const win32_offscreen_buffer& buffer, int x
 			red = (255-actualX);
         	green = (actualX);
             blue = (255 - actualX) + (actualX);
-
+            
             *pixel = MakeRGB(red, green, blue);
 			pixel++;
         }
@@ -185,8 +191,17 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
 				
             MSG message;
 
+            IGameInput* gameInput = nullptr;
+            if (FAILED(GameInputCreate(&gameInput)))
+            {
+                MessageBox(WindowHandle, L"GameInputCreate Failed", L"Error", MB_OK);
+                return -1;
+            }
+
+            // Loop
             while (is_application_running)
             {
+                // Windows Messages
                 while (PeekMessage(&message, 0, 0, 0, PM_REMOVE))
                 {
                     if (message.message == WM_QUIT)
@@ -197,6 +212,80 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                     DispatchMessage(&message);
                 }
 
+                // Input
+                IGameInputReading* reading;
+                if (SUCCEEDED(gameInput->GetCurrentReading(GameInputKindController | GameInputKindGamepad, nullptr, &reading)))
+                {
+                    // Controller Input
+
+					GameInputGamepadState state;
+
+                    GameInputKind currentKind = reading->GetInputKind();
+
+                    if (currentKind == GameInputKindGamepad)
+                    {
+                        reading->GetGamepadState(&state);
+                    }
+                    else if (currentKind = GameInputKindController)
+                    {
+                        uint32_t axisCount = reading->GetControllerAxisCount();
+
+                        float *axisStateArray = new float[axisCount]{};
+
+                        reading->GetControllerAxisState(axisCount, axisStateArray);
+
+                        if (axisCount < 6)
+                        {
+	                        // Not allowed!
+                        }
+
+                        // PS5 Controller
+
+                        // fill axis state;
+                        state.leftThumbstickX = axisStateArray[0];
+                        state.leftThumbstickY = axisStateArray[1];
+                        state.rightThumbstickX = axisStateArray[2];
+                        state.rightThumbstickY = axisStateArray[5];
+                        state.leftTrigger = axisStateArray[3];
+                        state.rightTrigger = axisStateArray[4];
+
+
+                    	//fill button state
+
+                        uint32_t buttonCount = reading->GetControllerButtonCount();
+                        bool* buttonStateArray = new bool[buttonCount]{};
+                        reading->GetControllerButtonState(buttonCount, buttonStateArray);
+
+                        uint32_t switchCount = reading->GetControllerSwitchCount();
+                        GameInputSwitchPosition *switchArray = new GameInputSwitchPosition[switchCount];
+                        reading->GetControllerSwitchState(switchCount, switchArray);
+
+                        // TODO: Fill buttons states:
+                        // GameInputGamepadNone
+                        // GameInputGamepadMenu
+                        // GameInputGamepadView
+                        // GameInputGamepadA
+                        // GameInputGamepadB
+                        // GameInputGamepadX
+                        // GameInputGamepadY
+                        // GameInputGamepadDPadUp
+                        // GameInputGamepadDPadDown
+                        // GameInputGamepadDPadLeft
+                        // GameInputGamepadDPadRight
+                        // GameInputGamepadLeftShoulder
+                        // GameInputGamepadRightShoulder
+                        // GameInputGamepadLeftThumbstick
+                        // GameInputGamepadRightThumbstick
+
+                        // cleanup
+                        delete[] axisStateArray;
+                        delete[] buttonStateArray;
+                        delete[] switchArray;
+                    }
+                    reading->Release();
+                }
+
+                // Rendering
                 Win32RenderWeirdGradient(global_back_buffer, xOffset, 0);
                 HDC deviceContext = GetDC(WindowHandle);
 
