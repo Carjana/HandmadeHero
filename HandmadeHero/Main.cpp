@@ -2,6 +2,10 @@
 #include <cstdint>
 #include <GameInput.h>
 #include <string>
+#include <Dsound.h>
+
+#pragma comment(lib, "dsound.lib")
+#pragma comment(lib, "GameInput.lib")
 
 using namespace GameInput::v2;
 
@@ -34,6 +38,51 @@ struct win32_offscreen_buffer
 };
 
 static win32_offscreen_buffer global_back_buffer;
+
+static void Win32InitDSound(HWND window,int32 samplesPerSecond, int32 bufferSize)
+{
+    // TODO: DirectSound is depricated, use XAudio2
+
+    LPDIRECTSOUND directSound;
+    if (SUCCEEDED(DirectSoundCreate(0, &directSound, 0)))
+    {
+        WAVEFORMATEX waveFormat = {};
+        waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+        waveFormat.nChannels = 2;
+        waveFormat.nSamplesPerSec = samplesPerSecond;
+        waveFormat.wBitsPerSample = 16;
+        waveFormat.nBlockAlign = (waveFormat.nChannels * waveFormat.wBitsPerSample) / 8;
+        waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
+        waveFormat.cbSize = 0;
+
+        directSound->SetCooperativeLevel(window, DSSCL_PRIORITY);
+
+        LPDIRECTSOUNDBUFFER primaryBuffer;
+        DSBUFFERDESC bufferDescription = {};
+        bufferDescription.dwSize = sizeof(bufferDescription);
+		bufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+        bufferDescription.dwBufferBytes = 0;
+
+        directSound->CreateSoundBuffer(&bufferDescription, &primaryBuffer, 0);
+
+        if (SUCCEEDED(primaryBuffer->SetFormat(&waveFormat)))
+        {
+            OutputDebugStringA("Primary Buffer set");
+        }
+
+        DSBUFFERDESC secondaryBufferDescription = {};
+		secondaryBufferDescription.dwSize = sizeof(secondaryBufferDescription);
+        secondaryBufferDescription.dwFlags = 0;
+		secondaryBufferDescription.dwBufferBytes = bufferSize;
+        secondaryBufferDescription.lpwfxFormat = &waveFormat;
+        LPDIRECTSOUNDBUFFER secondaryBuffer;
+
+        if (SUCCEEDED(directSound->CreateSoundBuffer(&secondaryBufferDescription, &secondaryBuffer, 0)))
+        {
+            OutputDebugStringA("Secondary Buffer Created");
+        }
+    }
+}
 
 win32_window_dimensions GetWindowDimension(HWND window)
 {
@@ -196,6 +245,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 MessageBox(WindowHandle, L"GameInputCreate Failed", L"Error", MB_OK);
                 return -1;
             }
+
+            Win32InitDSound(WindowHandle, 48000, 48000*sizeof(int16)*2);
 
             // Loop
             while (is_application_running)
