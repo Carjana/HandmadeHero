@@ -3,7 +3,6 @@
 #include <GameInput.h>
 #include <string>
 
-#pragma comment(lib, "GameInput.lib")
 using namespace GameInput::v2;
 
 typedef int8_t int8;
@@ -54,14 +53,14 @@ static uint32 MakeRGB(uint8 r, uint8 g, uint8 b)
 	return r << 16 | g << 8 | b;
 }
 
-static void Win32RenderWeirdGradient(const win32_offscreen_buffer& buffer, int xOffset, int yOffset)
+static void Win32RenderWeirdGradient(win32_offscreen_buffer *buffer, int xOffset, int yOffset)
 {
 
-    uint8* row = (uint8*)buffer.memory;
-    for (int y = 0; y < buffer.height; y++)
+    uint8* row = (uint8*)buffer->memory;
+    for (int y = 0; y < buffer->height; y++)
     {
         uint32* pixel = (uint32*)row;
-        for (int x = 0; x < buffer.width; x++)
+        for (int x = 0; x < buffer->width; x++)
         {
             uint8 red = 0;
             uint8 green = 0;
@@ -78,7 +77,7 @@ static void Win32RenderWeirdGradient(const win32_offscreen_buffer& buffer, int x
 			pixel++;
         }
 
-        row += buffer.pitch;
+        row += buffer->pitch;
     }
 }
 
@@ -106,14 +105,14 @@ static void Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int
 	buffer->pitch = width * buffer->bytes_per_pixel;
 }
 
-static void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, const win32_offscreen_buffer& buffer)
+static void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, win32_offscreen_buffer *buffer)
 {
     StretchDIBits(deviceContext,
 		// Destination
         0, 0, windowWidth, windowHeight,
         // Source
-        0, 0, buffer.width, buffer.height,
-        buffer.memory, &buffer.info, DIB_RGB_COLORS, SRCCOPY);
+        0, 0, buffer->width, buffer->height,
+        buffer->memory, &buffer->info, DIB_RGB_COLORS, SRCCOPY);
 }
 
 LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message,WPARAM w_param,LPARAM l_param)
@@ -141,7 +140,7 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message,WPARAM w_para
 
 		        win32_window_dimensions windowDimensions = GetWindowDimension(window);
 
-                Win32DisplayBufferInWindow(deviceContext, windowDimensions.width, windowDimensions.height, global_back_buffer);
+                Win32DisplayBufferInWindow(deviceContext, windowDimensions.width, windowDimensions.height, &global_back_buffer);
 
         		EndPaint(window, &paint);
 
@@ -249,7 +248,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                         state.leftTrigger = axisStateArray[3];
                         state.rightTrigger = axisStateArray[4];
 
-
                     	//fill button state
 
                         uint32_t buttonCount = reading->GetControllerButtonCount();
@@ -260,22 +258,27 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                         GameInputSwitchPosition *switchArray = new GameInputSwitchPosition[switchCount];
                         reading->GetControllerSwitchState(switchCount, switchArray);
 
-                        // TODO: Fill buttons states:
-                        // GameInputGamepadNone
-                        // GameInputGamepadMenu
-                        // GameInputGamepadView
-                        // GameInputGamepadA
-                        // GameInputGamepadB
-                        // GameInputGamepadX
-                        // GameInputGamepadY
-                        // GameInputGamepadDPadUp
-                        // GameInputGamepadDPadDown
-                        // GameInputGamepadDPadLeft
-                        // GameInputGamepadDPadRight
-                        // GameInputGamepadLeftShoulder
-                        // GameInputGamepadRightShoulder
-                        // GameInputGamepadLeftThumbstick
-                        // GameInputGamepadRightThumbstick
+                        uint32 buttons = GameInputGamepadNone;
+
+						buttons = buttons | buttonStateArray[9] << (uint32)log2(GameInputGamepadMenu);
+						buttons = buttons | buttonStateArray[13] << (uint32)log2(GameInputGamepadView);
+						buttons = buttons | buttonStateArray[1] << (uint32)log2(GameInputGamepadA);
+						buttons = buttons | buttonStateArray[2] << (uint32)log2(GameInputGamepadB);
+						buttons = buttons | buttonStateArray[0] << (uint32)log2(GameInputGamepadX);
+						buttons = buttons | buttonStateArray[3] << (uint32)log2(GameInputGamepadY);
+						buttons = buttons | (switchArray[0] == GameInputSwitchUp || switchArray[0] == GameInputSwitchUpLeft || switchArray[0] == GameInputSwitchUpRight) << (uint32)log2(GameInputGamepadDPadUp);
+						buttons = buttons | (switchArray[0] == GameInputSwitchDown || switchArray[0] == GameInputSwitchDownLeft || switchArray[0] == GameInputSwitchDownRight) << (uint32)log2(GameInputGamepadDPadDown);
+						buttons = buttons | (switchArray[0] == GameInputSwitchLeft || switchArray[0] == GameInputSwitchUpLeft || switchArray[0] == GameInputSwitchDownLeft) << (uint32)log2(GameInputGamepadDPadLeft);
+                        buttons = buttons | (switchArray[0] == GameInputSwitchRight || switchArray[0] == GameInputSwitchUpRight || switchArray[0] == GameInputSwitchDownRight) << (uint32)log2(GameInputGamepadDPadRight);
+						buttons = buttons | buttonStateArray[4] << (uint32)log2(GameInputGamepadLeftShoulder);
+						buttons = buttons | buttonStateArray[5] << (uint32)log2(GameInputGamepadRightShoulder);
+						buttons = buttons | buttonStateArray[10] << (uint32)log2(GameInputGamepadLeftThumbstick);
+						buttons = buttons | buttonStateArray[11] << (uint32)log2(GameInputGamepadRightThumbstick);
+
+
+						GameInputGamepadButtons gamepadButtons = static_cast<GameInputGamepadButtons>(buttons);
+
+                        state.buttons = gamepadButtons;
 
                         // cleanup
                         delete[] axisStateArray;
@@ -286,12 +289,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 }
 
                 // Rendering
-                Win32RenderWeirdGradient(global_back_buffer, xOffset, 0);
+                Win32RenderWeirdGradient(&global_back_buffer, xOffset, 0);
                 HDC deviceContext = GetDC(WindowHandle);
 
                 win32_window_dimensions windowDimensions = GetWindowDimension(WindowHandle);
 
-                Win32DisplayBufferInWindow(deviceContext, windowDimensions.width, windowDimensions.height, global_back_buffer);
+                Win32DisplayBufferInWindow(deviceContext, windowDimensions.width, windowDimensions.height, &global_back_buffer);
                 ReleaseDC(WindowHandle, deviceContext);
 				xOffset++;
 				xOffset = xOffset % 255;
