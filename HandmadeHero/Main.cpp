@@ -22,6 +22,9 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
+typedef float_t float32;
+typedef double_t float64;
+
 
 struct win32_window_dimensions
 {
@@ -327,8 +330,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 return -1;
             }
 
-
             MSG message;
+
+            LARGE_INTEGER performanceFrequency;
+            QueryPerformanceFrequency(&performanceFrequency);
+
+        	LARGE_INTEGER lastCounter;
+            QueryPerformanceCounter(&lastCounter);
+
+			int64 lastCycleCount = __rdtsc();
+
             // Loop
             while (is_application_running)
             {
@@ -456,6 +467,26 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
 					Win32FillSoundBuffer(&soundOutput, bytesToLock, bytesToWrite);
                 }
 
+				int64 currentCycleCount = __rdtsc();
+
+                LARGE_INTEGER currentCounter;
+				QueryPerformanceCounter(&currentCounter);
+				int64 cyclesElapsed = currentCycleCount - lastCycleCount;
+				int64 counterElapsed = currentCounter.QuadPart - lastCounter.QuadPart;
+
+                float32 msPerFrame = 1000*counterElapsed / (float32)performanceFrequency.QuadPart;
+
+				int32 fps = performanceFrequency.QuadPart / counterElapsed;
+                // mega cycles per frame
+				float32 mcpf = (float32)cyclesElapsed / (1000 * 1000);
+
+                char buffer[256];
+                sprintf_s(buffer, "%fms %df/s %fmc/f\n", msPerFrame, fps, mcpf);
+
+                OutputDebugStringA(buffer);
+
+				lastCounter = currentCounter;
+				lastCycleCount = currentCycleCount;
             }
         }
         else
