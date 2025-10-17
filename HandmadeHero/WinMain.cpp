@@ -25,6 +25,8 @@ typedef uint64_t uint64;
 typedef float_t float32;
 typedef double_t float64;
 
+#include "handmade.h"
+#include "handmade.cpp"
 
 struct win32_window_dimensions
 {
@@ -161,41 +163,6 @@ win32_window_dimensions GetWindowDimension(HWND window)
 	result.height = clientRect.bottom - clientRect.top;
 
     return result;
-}
-
-static uint32 MakeRGB(uint8 r, uint8 g, uint8 b)
-{
-    // NOTE: Little endian
-    // XX RR GG BB
-	return r << 16 | g << 8 | b;
-}
-
-static void Win32RenderWeirdGradient(win32_offscreen_buffer *buffer, int xOffset, int yOffset)
-{
-
-    uint8* row = (uint8*)buffer->memory;
-    for (int y = 0; y < buffer->height; y++)
-    {
-        uint32* pixel = (uint32*)row;
-        for (int x = 0; x < buffer->width; x++)
-        {
-            uint8 red = 0;
-            uint8 green = 0;
-            uint8 blue = 0;
-
-			const int actualY = y + yOffset;
-            const int actualX = x + xOffset;
-
-			red = (255-actualX);
-        	green = (actualX);
-            blue = (255 - actualX) + (actualX);
-            
-            *pixel = MakeRGB(red, green, blue);
-			pixel++;
-        }
-
-        row += buffer->pitch;
-    }
 }
 
 static void Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height)
@@ -432,7 +399,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 }
 
                 // Rendering
-                Win32RenderWeirdGradient(&global_back_buffer, xOffset, 0);
+                game_offscreen_buffer buffer;
+				buffer.memory = global_back_buffer.memory;
+				buffer.width = global_back_buffer.width;
+				buffer.height = global_back_buffer.height;
+				buffer.pitch = global_back_buffer.pitch;
+				buffer.bytes_per_pixel = global_back_buffer.bytes_per_pixel;
+
+                UpdateGameAndDraw(&buffer, xOffset, yOffset);
+
                 HDC deviceContext = GetDC(WindowHandle);
 
                 win32_window_dimensions windowDimensions = GetWindowDimension(WindowHandle);
@@ -480,10 +455,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 // mega cycles per frame
 				float32 mcpf = (float32)cyclesElapsed / (1000 * 1000);
 
-                char buffer[256];
-                sprintf_s(buffer, "%fms %df/s %fmc/f\n", msPerFrame, fps, mcpf);
+                char testbuffer[256];
+                sprintf_s(testbuffer, "%fms %df/s %fmc/f\n", msPerFrame, fps, mcpf);
 
-                OutputDebugStringA(buffer);
+                OutputDebugStringA(testbuffer);
 
 				lastCounter = currentCounter;
 				lastCycleCount = currentCycleCount;
