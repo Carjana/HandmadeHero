@@ -48,8 +48,6 @@ struct win32_offscreen_buffer
 struct win32_sound_output
 {
     int SamplesPerSecond;
-    int Tonehz;
-    int16 ToneVolume;
     uint32 RunningSampleIndex;
     int WavePeriod;
     int BytesPerSample;
@@ -296,19 +294,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
         if (WindowHandle != NULL)
         {
 			is_application_running = true;
-            // graphics test
-            int xOffset = 0;
-            int yOffset = 0;
 
             // sound test
 
             win32_sound_output soundOutput;
 
             soundOutput.SamplesPerSecond = 48000;
-            soundOutput.Tonehz = 256;
-            soundOutput.ToneVolume = 3000;
             soundOutput.RunningSampleIndex = 0;
-            soundOutput.WavePeriod = soundOutput.SamplesPerSecond / soundOutput.Tonehz;
             soundOutput.BytesPerSample = sizeof(int16) * 2;
             soundOutput.SecondaryBufferSize = soundOutput.SamplesPerSecond * soundOutput.BytesPerSample;
             soundOutput.LatencySampleCount = soundOutput.SamplesPerSecond / 15;
@@ -351,6 +343,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 }
 
                 // Input
+                game_input input = {};
                 IGameInputReading* reading;
                 if (SUCCEEDED(gameInput->GetCurrentReading(GameInputKindController | GameInputKindGamepad, nullptr, &reading)))
                 {
@@ -380,10 +373,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                         // PS5 Controller
 
                         // fill axis state;
-                        state.leftThumbstickX = axisStateArray[0];
-                        state.leftThumbstickY = axisStateArray[1];
-                        state.rightThumbstickX = axisStateArray[2];
-                        state.rightThumbstickY = axisStateArray[5];
+                        state.leftThumbstickX = axisStateArray[0] * 2 - 1;
+                        state.leftThumbstickY = axisStateArray[1] * 2 - 1;
+                        state.rightThumbstickX = axisStateArray[2] * 2 - 1;
+                        state.rightThumbstickY = axisStateArray[5] * 2 - 1;
                         state.leftTrigger = axisStateArray[3];
                         state.rightTrigger = axisStateArray[4];
 
@@ -399,20 +392,20 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
 
                         uint32 buttons = GameInputGamepadNone;
 
-						buttons = buttons | buttonStateArray[9] << (uint32)log2(GameInputGamepadMenu);
-						buttons = buttons | buttonStateArray[13] << (uint32)log2(GameInputGamepadView);
-						buttons = buttons | buttonStateArray[1] << (uint32)log2(GameInputGamepadA);
-						buttons = buttons | buttonStateArray[2] << (uint32)log2(GameInputGamepadB);
-						buttons = buttons | buttonStateArray[0] << (uint32)log2(GameInputGamepadX);
-						buttons = buttons | buttonStateArray[3] << (uint32)log2(GameInputGamepadY);
-						buttons = buttons | (switchArray[0] == GameInputSwitchUp || switchArray[0] == GameInputSwitchUpLeft || switchArray[0] == GameInputSwitchUpRight) << (uint32)log2(GameInputGamepadDPadUp);
-						buttons = buttons | (switchArray[0] == GameInputSwitchDown || switchArray[0] == GameInputSwitchDownLeft || switchArray[0] == GameInputSwitchDownRight) << (uint32)log2(GameInputGamepadDPadDown);
-						buttons = buttons | (switchArray[0] == GameInputSwitchLeft || switchArray[0] == GameInputSwitchUpLeft || switchArray[0] == GameInputSwitchDownLeft) << (uint32)log2(GameInputGamepadDPadLeft);
-                        buttons = buttons | (switchArray[0] == GameInputSwitchRight || switchArray[0] == GameInputSwitchUpRight || switchArray[0] == GameInputSwitchDownRight) << (uint32)log2(GameInputGamepadDPadRight);
-						buttons = buttons | buttonStateArray[4] << (uint32)log2(GameInputGamepadLeftShoulder);
-						buttons = buttons | buttonStateArray[5] << (uint32)log2(GameInputGamepadRightShoulder);
-						buttons = buttons | buttonStateArray[10] << (uint32)log2(GameInputGamepadLeftThumbstick);
-						buttons = buttons | buttonStateArray[11] << (uint32)log2(GameInputGamepadRightThumbstick);
+						buttons |= buttonStateArray[9] << (uint32)log2(GameInputGamepadMenu);
+						buttons |= buttonStateArray[13] << (uint32)log2(GameInputGamepadView);
+						buttons |= buttonStateArray[1] << (uint32)log2(GameInputGamepadA);
+						buttons |= buttonStateArray[2] << (uint32)log2(GameInputGamepadB);
+						buttons |= buttonStateArray[0] << (uint32)log2(GameInputGamepadX);
+						buttons |= buttonStateArray[3] << (uint32)log2(GameInputGamepadY);
+						buttons |= (switchArray[0] == GameInputSwitchUp || switchArray[0] == GameInputSwitchUpLeft || switchArray[0] == GameInputSwitchUpRight) << (uint32)log2(GameInputGamepadDPadUp);
+						buttons |= (switchArray[0] == GameInputSwitchDown || switchArray[0] == GameInputSwitchDownLeft || switchArray[0] == GameInputSwitchDownRight) << (uint32)log2(GameInputGamepadDPadDown);
+						buttons |= (switchArray[0] == GameInputSwitchLeft || switchArray[0] == GameInputSwitchUpLeft || switchArray[0] == GameInputSwitchDownLeft) << (uint32)log2(GameInputGamepadDPadLeft);
+                        buttons |= (switchArray[0] == GameInputSwitchRight || switchArray[0] == GameInputSwitchUpRight || switchArray[0] == GameInputSwitchDownRight) << (uint32)log2(GameInputGamepadDPadRight);
+						buttons |= buttonStateArray[4] << (uint32)log2(GameInputGamepadLeftShoulder);
+						buttons |= buttonStateArray[5] << (uint32)log2(GameInputGamepadRightShoulder);
+						buttons |= buttonStateArray[10] << (uint32)log2(GameInputGamepadLeftThumbstick);
+						buttons |= buttonStateArray[11] << (uint32)log2(GameInputGamepadRightThumbstick);
 
 
 						GameInputGamepadButtons gamepadButtons = static_cast<GameInputGamepadButtons>(buttons);
@@ -424,6 +417,19 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                         delete[] buttonStateArray;
                         delete[] switchArray;
                     }
+
+					input.Controllers[0].EndX = state.leftThumbstickX;
+					input.Controllers[0].EndY = state.leftThumbstickY;
+
+					input.Controllers[0].South.EndedDown = state.buttons & GameInputGamepadA;
+					input.Controllers[0].East.EndedDown = state.buttons & GameInputGamepadX;
+					input.Controllers[0].North.EndedDown = state.buttons & GameInputGamepadY;
+					input.Controllers[0].West.EndedDown = state.buttons & GameInputGamepadB;
+
+					input.Controllers[0].LeftShoulder.EndedDown = state.buttons & GameInputGamepadRightShoulder;
+					input.Controllers[0].RightShoulder.EndedDown = state.buttons & GameInputGamepadLeftShoulder;
+
+
                     reading->Release();
                 }
 
@@ -434,8 +440,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
 
                 Win32DisplayBufferInWindow(deviceContext, windowDimensions.width, windowDimensions.height, &global_back_buffer);
                 ReleaseDC(WindowHandle, deviceContext);
-				xOffset++;
-				xOffset = xOffset % 255;
 
                 DWORD bytesToLock;
                 DWORD targetCursor;
@@ -474,7 +478,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 buffer.Pitch = global_back_buffer.pitch;
                 buffer.Bytes_per_pixel = global_back_buffer.bytes_per_pixel;
 
-                UpdateGameAndDraw(&buffer, xOffset, yOffset, &soundBuffer, soundOutput.Tonehz);
+                UpdateGameAndDraw(&input, &buffer, &soundBuffer);
 
                 // DirectSound output test
 				if (soundIsValid)

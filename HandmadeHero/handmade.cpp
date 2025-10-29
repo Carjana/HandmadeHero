@@ -1,5 +1,5 @@
 #include "handmade.h"
-#include "Platform.h"
+
 static uint32 MakeRGB(uint8 r, uint8 g, uint8 b)
 {
     // NOTE: Little endian
@@ -7,11 +7,10 @@ static uint32 MakeRGB(uint8 r, uint8 g, uint8 b)
     return r << 16 | g << 8 | b;
 }
 
-static void GameOutputSound(game_sound_output_buffer *soundBuffer, int hz)
+static void GameOutputSound(game_sound_output_buffer *soundBuffer, int32 toneHz)
 {
     static float32 tSine;
     int16 toneVolume = 3000;
-    int32 toneHz = hz;
 
     int32 wavePeriod = soundBuffer->SamplesPerSecond / toneHz;
 
@@ -47,7 +46,7 @@ static void RenderWeirdGradient(game_offscreen_buffer* buffer, int xOffset, int 
             const int actualX = x + xOffset;
 
             red = (255 - actualX);
-            green = (actualX);
+            green = (actualY);
             blue = (255 - actualX) + (actualX);
 
             *pixel = MakeRGB(red, green, blue);
@@ -58,8 +57,37 @@ static void RenderWeirdGradient(game_offscreen_buffer* buffer, int xOffset, int 
     }
 }
 
-static void UpdateGameAndDraw(game_offscreen_buffer *buffer, uint32 xOffset, uint32 yOffset, game_sound_output_buffer *soundBuffer, int hz)
+static void UpdateGameAndDraw(game_input *input, game_offscreen_buffer *buffer, game_sound_output_buffer *soundBuffer)
 {
-    GameOutputSound(soundBuffer, hz);
+    static uint32 xOffset = 0;
+    static uint32 yOffset = 0;
+    static int32 toneHz = 256;
+
+    if (input->Controllers[0].EndX > 0.4f)
+    {
+        xOffset++;
+    }
+    else if (input->Controllers[0].EndX < -0.4f)
+    {
+        if (xOffset == 0)
+			xOffset = 255;
+        xOffset--;
+    }
+
+    if (input->Controllers[0].EndY > 0.4f)
+    {
+        yOffset++;
+    }
+    else if (input->Controllers[0].EndY < -0.4f)
+    {
+        if (yOffset == 0)
+            yOffset = 255;
+        yOffset--;
+    }
+
+    xOffset = xOffset % 255;
+    // Emagine / Emmagine : Engine name
+    
+    GameOutputSound(soundBuffer, toneHz);
     RenderWeirdGradient(buffer, xOffset, yOffset);
 }
