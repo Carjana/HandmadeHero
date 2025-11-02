@@ -57,37 +57,45 @@ static void RenderWeirdGradient(game_offscreen_buffer* buffer, int xOffset, int 
     }
 }
 
-static void UpdateGameAndDraw(game_input *input, game_offscreen_buffer *buffer, game_sound_output_buffer *soundBuffer)
+static void UpdateGameAndDraw(game_memory *memory, game_input *input, game_offscreen_buffer *buffer, game_sound_output_buffer *soundBuffer)
 {
-    static uint32 xOffset = 0;
-    static uint32 yOffset = 0;
-    static int32 toneHz = 256;
+
+    Assert(sizeof(game_state) <= memory->permanentStorageSize)
+
+	game_state* gameState = gameState = (game_state*)memory->permanentStorage;
+    if (!memory->isInitialized)
+    {
+        gameState->xOffset = 0;
+        gameState->yOffset = 0;
+        gameState->toneHz = 256;
+		memory->isInitialized = true;
+    }
 
     if (input->Controllers[0].EndX > 0.4f)
     {
-        xOffset++;
+        gameState->xOffset++;
     }
     else if (input->Controllers[0].EndX < -0.4f)
     {
-        if (xOffset == 0)
-			xOffset = 255;
-        xOffset--;
+        if (gameState->xOffset == 0)
+			gameState->xOffset = 255;
+        gameState->xOffset--;
     }
 
     if (input->Controllers[0].EndY > 0.4f)
     {
-        yOffset++;
+        gameState->yOffset++;
     }
     else if (input->Controllers[0].EndY < -0.4f)
     {
-        if (yOffset == 0)
-            yOffset = 255;
-        yOffset--;
+        if (gameState->yOffset == 0)
+            gameState->yOffset = 255;
+        gameState->yOffset--;
     }
 
-    xOffset = xOffset % 255;
+    gameState->xOffset = gameState->xOffset % 255;
     // Emagine / Emmagine : Engine name
     
-    GameOutputSound(soundBuffer, toneHz);
-    RenderWeirdGradient(buffer, xOffset, yOffset);
+    GameOutputSound(soundBuffer, gameState->toneHz);
+    RenderWeirdGradient(buffer, gameState->xOffset, gameState->yOffset);
 }

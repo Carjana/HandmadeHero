@@ -1,5 +1,18 @@
 #pragma once
 
+#if DEBUG
+#define Assert(Expression) \
+	if(!(Expression))\
+	{ \
+	  *(int*)0 = 0; \
+	}
+#else
+#define Assert(Expression)
+#endif
+
+#define Kilobytes(Value) ((Value)*1024)
+#define Megabytes(Value) (Kilobytes((uint64)Value) * 1024)
+#define Gigabytes(Value) (Megabytes((uint64)Value) * 1024)
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
 struct game_offscreen_buffer
@@ -59,4 +72,22 @@ struct game_input
 	game_controller_input Controllers[4];
 };
 
-static void UpdateGameAndDraw(game_input *input, game_offscreen_buffer *buffer, game_sound_output_buffer *soundBuffer);
+struct game_memory
+{
+	bool isInitialized;
+
+	uint64 permanentStorageSize;
+	void* permanentStorage;
+
+	uint64 transientStorageSize;
+	void* transientStorage;
+};
+
+struct game_state
+{
+	uint32 xOffset;
+	uint32 yOffset;
+	int32 toneHz;
+};
+
+static void UpdateGameAndDraw(game_memory *memory, game_input *input, game_offscreen_buffer *buffer, game_sound_output_buffer *soundBuffer);

@@ -310,6 +310,18 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
 
             int16* soundSamples = (int16*)VirtualAlloc(0, soundOutput.SecondaryBufferSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
+            game_memory gameMemory = {};
+            gameMemory.permanentStorageSize = Megabytes(64);
+            gameMemory.permanentStorage = VirtualAlloc(0, gameMemory.permanentStorageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            
+            gameMemory.transientStorageSize = Gigabytes(4);
+            gameMemory.transientStorage = VirtualAlloc(0, gameMemory.permanentStorageSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            if (!(gameMemory.permanentStorage && gameMemory.transientStorage && soundSamples))
+            {
+                MessageBox(WindowHandle, L"Failed to allocate Storage", L"Error", MB_OK);
+                return -1;
+            }
+
             // input test
             IGameInput* gameInput = nullptr;
             if (FAILED(GameInputCreate(&gameInput)))
@@ -478,7 +490,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prevInstance,PWSTR commandLine
                 buffer.Pitch = global_back_buffer.pitch;
                 buffer.Bytes_per_pixel = global_back_buffer.bytes_per_pixel;
 
-                UpdateGameAndDraw(&input, &buffer, &soundBuffer);
+                UpdateGameAndDraw(&gameMemory, &input, &buffer, &soundBuffer);
 
                 // DirectSound output test
 				if (soundIsValid)
