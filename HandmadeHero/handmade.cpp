@@ -65,6 +65,15 @@ static void UpdateGameAndDraw(game_memory *memory, game_input *input, game_offsc
 	game_state* gameState = gameState = (game_state*)memory->permanentStorage;
     if (!memory->isInitialized)
     {
+        // Test file IO
+	    // const char* fileName = __FILE__;
+        // debug_read_file_result mem = DEBUGPlatformReadEntireFile(fileName);
+        // if (mem.Contents)
+        // {
+        //     DEBUGPlatformWriteEntireFile("W:/Test.out", mem.ContentsSize, mem.Contents);
+        //     DEBUGPlatformFreeFileMemory(mem.Contents);
+        // }
+
         gameState->xOffset = 0;
         gameState->yOffset = 0;
         gameState->toneHz = 256;

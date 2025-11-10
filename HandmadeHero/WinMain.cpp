@@ -59,6 +59,65 @@ static bool is_application_running;
 static win32_offscreen_buffer global_back_buffer;
 static LPDIRECTSOUNDBUFFER secondaryBuffer;
 
+static debug_read_file_result DEBUGPlatformReadEntireFile(const char* fileName)
+{
+    debug_read_file_result result = {};
+    HANDLE fileHandle = CreateFileA(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
+    if (fileHandle != INVALID_HANDLE_VALUE)
+    {
+		LARGE_INTEGER fileSize;
+		if (GetFileSizeEx(fileHandle, &fileSize))
+		{
+            Assert(fileSize.QuadPart < 0xFFFFFFFF);
+			uint32 fileSize32 = (uint32)fileSize.QuadPart;
+            result.Contents = VirtualAlloc(0, fileSize32, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+            if (result.Contents)
+            {
+                DWORD bytesRead;
+                if (!ReadFile(fileHandle, result.Contents, fileSize32, &bytesRead, 0) || fileSize32 != bytesRead)
+                {
+                    // read failed
+                    DEBUGPlatformFreeFileMemory(result.Contents);
+                    result.Contents = 0;
+                }
+                result.ContentsSize = fileSize32;
+            }
+		}
+
+		CloseHandle(fileHandle);
+	    
+    }
+
+    return result;
+
+}
+static void DEBUGPlatformFreeFileMemory(void* memory)
+{
+    VirtualFree(memory, 0, MEM_RELEASE);
+}
+
+static bool DEBUGPlatformWriteEntireFile(const char* fileName, uint32 memorySize, void* memory)
+{
+    bool result = false;
+    HANDLE fileHandle = CreateFileA(fileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, NULL, NULL);
+    if (fileHandle != INVALID_HANDLE_VALUE)
+    {
+        DWORD bytesWritten;
+        if (WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0))
+        {
+			result = bytesWritten == memorySize;
+        }
+        else
+        {
+        	result = false;
+        }
+
+		CloseHandle(fileHandle);
+    }
+
+    return result;
+}
+
 static void Win32InitDSound(HWND window,int32 samplesPerSecond, int32 bufferSize)
 {
     // TODO: DirectSound is depricated, use XAudio2

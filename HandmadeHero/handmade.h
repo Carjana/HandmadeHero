@@ -13,7 +13,23 @@
 #define Kilobytes(Value) ((Value)*1024)
 #define Megabytes(Value) (Kilobytes((uint64)Value) * 1024)
 #define Gigabytes(Value) (Megabytes((uint64)Value) * 1024)
+
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+#define HANDMADE_INTERNAL 1
+#define HANDMADE_SLOW 0
+
+#if HANDMADE_INTERNAL
+struct debug_read_file_result
+{
+	uint32 ContentsSize;
+	void* Contents;
+};
+debug_read_file_result DEBUGPlatformReadEntireFile(const char *fileName);
+void DEBUGPlatformFreeFileMemory(void* memory);
+
+bool DEBUGPlatformWriteEntireFile(const char* fileName, uint32 memorySize, void* memory);
+#endif
 
 struct game_offscreen_buffer
 {
